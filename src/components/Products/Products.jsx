@@ -5,12 +5,12 @@ import Product from './Product/Product'
 
 import useStyles from './styles';
 
-const products = [
-    {id: 1, name: 'Shoes', description: 'Running Shoes', price:'$23'},
-    {id: 2, name: 'MacBook', description:'Apple Macbook', price:'$5'}
-]
+// const products = [
+//     {id: 1, name: 'Shoes', description: 'Running Shoes', price:'$23'},
+//     {id: 2, name: 'MacBook', description:'Apple Macbook', price:'$5'}
+// ]
 
-const Products = () => {
+const Products = ({products, onAddToCart }) => {
     const classes = useStyles();
 
     return (
@@ -20,7 +20,7 @@ const Products = () => {
                 {
                     products.map( (product) => (
                         <Grid item key = {product.id} xs={12} sm={6} md={4} lg={3}>
-                            <Product product={product} />
+                            <Product product={product} onAddToCart={ () => onAddToCart(product.id, 1)}/>
                         </Grid>
                     ))
                 }
