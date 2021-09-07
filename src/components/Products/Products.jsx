@@ -5,11 +5,6 @@ import Product from './Product/Product'
 
 import useStyles from './styles';
 
-// const products = [
-//     {id: 1, name: 'Shoes', description: 'Running Shoes', price:'$23'},
-//     {id: 2, name: 'MacBook', description:'Apple Macbook', price:'$5'}
-// ]
-
 const Products = ({products, onAddToCart }) => {
     const classes = useStyles();
 
