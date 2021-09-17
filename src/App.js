@@ -1,3 +1,4 @@
+import { useStripe } from '@stripe/react-stripe-js';
 import React,{ useState, useEffect} from 'react'
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 
@@ -10,7 +11,7 @@ const App = () => {
     const [products, setProducts] = useState([])
     const [cart, setCart] = useState({})
     const [order, setOrder] = useState({})
-    const [errorMessaage, setErrorMessaage] = useState('')
+    const [errorMessage, setErrorMessage] = useState('')
 
     const fetchProducts = async () => {
         const { data } = await commerce.products.list();
@@ -51,15 +52,89 @@ const App = () => {
         setCart(newCart);
     }
 
-    const handleCaptureCheckout = async(checkoutTokenId, newOrder) => {
+    const handleOrderCaptured = () => {
+        alert('Order placed!');
+    };
+
+    const handleOrderCaptureFailed = (error) => {
+        console.log('order_capture_failed')
+        console.log(error);
+    };
+
+    const handleCaptureCheckout = async(checkoutTokenId, newOrder, stripe) => {
         try{
             const incomingOrder = await commerce.checkout.capture(checkoutTokenId, newOrder)
-            
-            setOrder(incomingOrder);
-            refreshCart();
+            console.log({incomingOrder})
+            // setOrder(incomingOrder);
+            // refreshCart();
 
-        }catch(error){
-            setErrorMessaage(error.data.error.message);
+        }catch(response){
+            // if(error.data.error.type === 'requires_verification'){
+            //     console.log(error.data.error.param);
+                // stripe.handleCardAction(error.data.error.param)
+                //     .then( result => {
+                //         if(result.error){
+                //             const err = result.error;
+                //             console.log({err})
+                //             handleOrderCaptureFailed(result.error);
+                //         }
+
+                //         commerce.checkout.capture(checkoutTokenId, newOrder)
+                //             .then((res)=>{
+                //                 handleOrderCaptured();
+                //                 setOrder(res);
+                //                 refreshCart();
+                //             })
+                //             .catch(handleOrderCaptureFailed)
+                //     })
+            
+            // } else {
+                
+            //     handleOrderCaptureFailed(error)
+            // }
+            // console.log({error});
+            // setErrorMessage(error.data.error.message);
+            if (response.statusCode !== 402 || response.data.error.type !== 'requires_verification') {
+                // Handle the error as usual because it's not related to 3D secure payments
+                console.log(response);
+                return;
+            }
+
+            const cardActionResult = await stripe.handleCardAction(response.data.error.param)
+
+            if (cardActionResult.error) {
+                // The customer failed to authenticate themselves with their bank and the transaction has been declined
+                alert(cardActionResult.error.message);
+                return;
+            }
+
+            const {list_items, customer, shipping, fulfillment} = newOrder;
+            console.log({list_items, customer, shipping, fulfillment});
+
+            try {
+                const order = await commerce.checkout.capture(checkoutTokenId, {
+                    list_items,
+                    customer, 
+                    shipping,
+                    fulfillment,
+                  payment: {
+                    gateway: 'stripe',
+                    stripe: {
+                      payment_intent_id: cardActionResult.paymentIntent.id,
+                    },
+                  },
+                });
+            
+                // If we get here the order has been captured successfully and the order detail is available in the order variable
+                console.log(order);
+                setOrder(order);
+                refreshCart();
+                return;
+              } catch (response) {
+                // Just like above, we get here if the order failed to capture with Commrece.js
+                console.log(response);
+                alert(response.message);
+              }
         }
     }
 
@@ -87,7 +162,7 @@ const App = () => {
                         />
                     </Route>
                     <Route exact path="/checkout">
-                        <Checkout cart={cart} order={order} onCaptureCheckout={handleCaptureCheckout} error={errorMessaage} />
+                        <Checkout cart={cart} order={order} onCaptureCheckout={handleCaptureCheckout} error={errorMessage} />
                     </Route>
                 </Switch>
             </div>
